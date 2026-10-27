@@ -1,0 +1,15 @@
+// Public API of the PDF template builder.
+export * from './core/types'
+export * from './core/schema'
+export * from './core/rng'
+export * from './core/resolve'
+export { createEmptyTemplate, pageDimensions, createNode, newId, walk, findNode } from './core/tree'
+export { createEditorStore } from './core/store'
+export { Document, PageSheet, RenderComponent, RuntimeProvider, useRuntime, useRenderMode } from './core/runtime'
+export { Editor, type EditorProps } from './editor/Editor'
+export { defaultConfig } from './components'
+export * from './components'
+export { RichText, type RichTextProps } from './components/RichText'
+export { sanitizeRichHtml, stripRichHtml, isPlainText } from './core/sanitize'
+export { PrintApp, type PrintPayload } from './pdf/PrintApp'
+// Server-only: import { exportPdf } from './pdf/export' (requires playwright).
