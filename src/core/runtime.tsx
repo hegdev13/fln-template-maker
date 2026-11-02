@@ -67,7 +67,7 @@ export function ViewZone({ items, kind }: ZoneProps) {
   return (
     <div className={kind === 'page' ? 'ptb-page-flow' : 'ptb-slot'}>
       {items.map((item) => (
-        <div key={item.id} className="ptb-cell" {...cellProps(item)}>
+        <div key={item.id} className="ptb-cell" data-node-id={item.id} {...cellProps(item)}>
           <Node data={item} />
         </div>
       ))}

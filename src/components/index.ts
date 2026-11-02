@@ -12,8 +12,8 @@ export * from './table'
 export const defaultConfig: Config = {
   components: { Header, Heading, Text, Image, Spacer, Divider, Columns, Box, Table, Mcq, TrueFalse, Match, Sequence, FillBlank, Practice },
   categories: {
-    basic: { title: 'Basic', components: ['Header', 'Heading', 'Text', 'Image', 'Spacer', 'Divider'] },
-    layout: { title: 'Layout', components: ['Columns', 'Box', 'Table'] },
+    basic: { title: 'Basic', components: ['Header', 'Heading', 'Text', 'Image'] },
+    layout: { title: 'Layout', components: ['Columns', 'Box', 'Table', 'Spacer', 'Divider'] },
     questions: { title: 'Questions', components: ['Mcq', 'TrueFalse', 'Match', 'Sequence', 'FillBlank', 'Practice'] },
   },
 }

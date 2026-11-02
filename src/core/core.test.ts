@@ -208,3 +208,95 @@ describe('twelfth snapping', () => {
     expect(snapEdgeSpan('right', 24, 24, 24)).toBeUndefined()
   })
 })
+
+describe('custom components', () => {
+  const def = {
+    version: 1 as const,
+    id: 'school-header',
+    name: 'School header',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    content: [
+      { id: 'a', type: 'Header', props: { title: 'My School', subtitle: '', showName: true, showClass: false, showDate: true } },
+      { id: 'b', type: 'Divider', props: { style: 'solid', thickness: 1 }, span: 6 },
+    ],
+  }
+
+  it('slugifies and de-duplicates ids', async () => {
+    const { slugify, uniqueId } = await import('./custom')
+    expect(slugify('  School Header (2026)! ')).toBe('school-header-2026')
+    expect(slugify('???')).toBe('component')
+    expect(uniqueId('page', [])).toBe('page')
+    expect(uniqueId('page', ['page', 'page-2'])).toBe('page-3')
+  })
+
+  it('validates definitions', async () => {
+    const { customComponentSchema } = await import('./custom')
+    expect(customComponentSchema.parse(def).id).toBe('school-header')
+    expect(() => customComponentSchema.parse({ ...def, id: '../etc' })).toThrow()
+    expect(() => customComponentSchema.parse({ ...def, content: [] })).toThrow()
+    expect(() => customComponentSchema.parse({ ...def, name: '  ' })).toThrow()
+  })
+
+  it('registers a component per definition in a Custom palette group', async () => {
+    const { withCustomComponents, customType } = await import('./custom')
+    const full = withCustomComponents(defaultConfig, [def])
+    expect(full.components[customType('school-header')].label).toBe('School header')
+    expect(full.categories?.custom.components).toEqual(['custom:school-header'])
+    expect(withCustomComponents(defaultConfig, [])).toBe(defaultConfig)
+    expect(defaultConfig.components['custom:school-header']).toBeUndefined() // base config untouched
+  })
+
+  it('gives every placed copy its own ids and keeps nested layout', async () => {
+    const { withCustomComponents } = await import('./custom')
+    const full = withCustomComponents(defaultConfig, [def])
+    const s = createEditorStore(full, createEmptyTemplate())
+    s.getState().addComponent('custom:school-header')
+    s.getState().addComponent('custom:school-header')
+    const [one, two] = s.getState().template.pages[0].content
+    expect(one.props.content.map((n: any) => n.type)).toEqual(['Header', 'Divider'])
+    expect(one.props.content[1].span).toBe(6)
+    const ids = [one, two, ...one.props.content, ...two.props.content].map((n: any) => n.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(one.props.content[0].id).not.toBe('a') // not the definition's ids
+    expect(def.content[0].id).toBe('a') // definition not mutated
+  })
+
+  it('renders placed copies (this is the path the PDF print page uses)', async () => {
+    const { withCustomComponents } = await import('./custom')
+    const { Document } = await import('./runtime')
+    const { createElement } = await import('react')
+    const { renderToStaticMarkup } = await import('react-dom/server')
+    const full = withCustomComponents(defaultConfig, [def])
+    const s = createEditorStore(full, createEmptyTemplate())
+    s.getState().addComponent('custom:school-header')
+    const html = renderToStaticMarkup(createElement(Document, { template: s.getState().template, config: full }))
+    expect(html).toContain('My School')
+    expect(html).toContain('ptb-divider')
+    expect(html).not.toContain('Unknown component')
+  })
+})
+
+describe('page overflow', () => {
+  it('moves a component and the ones after it to the top of the next page', () => {
+    const s = createEditorStore(cfg, createEmptyTemplate())
+    const ids = ['Heading', 'Text', 'Divider', 'Spacer'].map((t) => s.getState().addComponent(t)!)
+    const before = s.getState().template
+    s.getState().spillOver(before.pages[0].id, ids[2])
+    const after = s.getState().template
+    expect(after.pages).toHaveLength(2)
+    expect(after.pages[0].content.map((n) => n.id)).toEqual(ids.slice(0, 2))
+    expect(after.pages[1].content.map((n) => n.id)).toEqual(ids.slice(2))
+    expect(before.pages[0].content).toHaveLength(4) // input untouched
+    // overflow into an existing page goes in front of its content
+    s.getState().spillOver(after.pages[0].id, ids[1])
+    expect(s.getState().template.pages[1].content.map((n) => n.id)).toEqual([ids[1], ids[2], ids[3]])
+  })
+
+  it('never moves the first component of a page', () => {
+    const s = createEditorStore(cfg, createEmptyTemplate())
+    const id = s.getState().addComponent('Heading')!
+    s.getState().spillOver(s.getState().template.pages[0].id, id)
+    expect(s.getState().template.pages).toHaveLength(1)
+  })
+})

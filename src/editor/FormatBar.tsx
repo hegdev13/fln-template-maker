@@ -16,6 +16,8 @@ export function FormatBar() {
     const node = s.selectedId ? findNode(s.template, s.config, s.selectedId)?.node : null
     return !!node && hasRichText(s.config, node.type)
   })
+  // snap labels use the same gap; step aside while they are showing
+  const marking = useEditorStore((s) => !!s.rulerMarks)
   const [, bump] = useReducer((n: number) => n + 1, 0)
   useEffect(() => {
     if (!editor) return
@@ -39,7 +41,7 @@ export function FormatBar() {
   )
 
   return (
-    <div className={`ed-formatbar${editor ? '' : ' idle'}`} aria-label="Text formatting">
+    <div className={`ed-formatbar${editor ? '' : ' idle'}${marking ? ' dim' : ''}`} aria-label="Text formatting">
       <span className="ed-formatbar-title">Text</span>
       {toggle('bold', 'B', 'Bold (⌘B)', { fontWeight: 700 }, 'toggleBold')}
       {toggle('italic', 'I', 'Italic (⌘I)', { fontStyle: 'italic' }, 'toggleItalic')}
@@ -75,7 +77,6 @@ export function FormatBar() {
       <button type="button" disabled={!editor} title="Clear all formatting from the selection" onMouseDown={keep} onClick={() => run((c) => c.unsetAllMarks())}>
         Clear
       </button>
-      {!editor && <span className="ed-formatbar-hint">Click any text on the page, select letters, then format them here.</span>}
     </div>
   )
 }

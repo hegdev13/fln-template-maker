@@ -1,12 +1,14 @@
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragMoveEvent } from '@dnd-kit/core'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { withCustomComponents, type CustomComponentDef } from '../core/custom'
 import { createEditorStore } from '../core/store'
 import { createEmptyTemplate, isZoneInsideNode, parseZoneKey } from '../core/tree'
 import { parseTemplate } from '../core/schema'
 import type { Config, Template } from '../core/types'
 import { Canvas } from './Canvas'
-import { FormatBar } from './FormatBar'
-import { StoreContext, useEditorStore, useEditorStoreApi } from './context'
+import { CustomContext, StoreContext, VariantContext, useEditorStore, useEditorStoreApi, useVariant, type CustomApi, type EditorVariant } from './context'
+import { CustomBuilder } from './CustomBuilder'
+import { Modal } from './Modal'
 import { Inspector } from './Inspector'
 import { Palette } from './Palette'
 
@@ -18,10 +20,42 @@ export interface EditorProps {
   onChange?: (template: Template) => void
   /** Extra buttons rendered in the toolbar (e.g. Save, Export PDF). Receives the live template getter. */
   actions?: (ctx: { getTemplate: () => Template }) => ReactNode
+  /** 'component' turns the editor into the custom-component builder (single canvas, no page controls). */
+  variant?: EditorVariant
+  /**
+   * Enables custom components: `items` are the saved definitions (the host loads them, e.g. from the
+   * `custom-components/` folder) and `onSave` persists one; update `items` afterwards.
+   */
+  customComponents?: { items: CustomComponentDef[]; onSave: (def: CustomComponentDef) => Promise<void> | void }
 }
 
-export function Editor({ config, data, onChange, actions }: EditorProps) {
-  const store = useMemo(() => createEditorStore(config, data ?? createEmptyTemplate()), []) // eslint-disable-line react-hooks/exhaustive-deps
+export function Editor({ config, data, onChange, actions, variant = 'page', customComponents }: EditorProps) {
+  const items = customComponents?.items
+  const fullConfig = useMemo(() => (items ? withCustomComponents(config, items) : config), [config, items])
+  const store = useMemo(() => createEditorStore(fullConfig, data ?? createEmptyTemplate()), []) // eslint-disable-line react-hooks/exhaustive-deps
+  // a saved/edited custom component becomes available in the palette straight away
+  useEffect(() => {
+    if (store.getState().config !== fullConfig) store.getState().setConfig(fullConfig)
+  }, [store, fullConfig])
+
+  const [builder, setBuilder] = useState<{ def?: CustomComponentDef } | null>(null)
+  const [confirm, setConfirm] = useState<CustomComponentDef | null>(null)
+  const onSaveRef = useRef(customComponents?.onSave)
+  onSaveRef.current = customComponents?.onSave
+  const customApi = useMemo<CustomApi | null>(
+    () =>
+      items
+        ? {
+            items,
+            baseConfig: config,
+            openNew: () => setBuilder({}),
+            requestEdit: (def) => setConfirm(def),
+            save: async (def) => void (await onSaveRef.current?.(def)),
+          }
+        : null,
+    [items, config],
+  )
+
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
   useEffect(() => {
@@ -36,12 +70,44 @@ export function Editor({ config, data, onChange, actions }: EditorProps) {
 
   return (
     <StoreContext.Provider value={store}>
-      <Shell actions={actions} />
+      <VariantContext.Provider value={variant}>
+        <CustomContext.Provider value={customApi}>
+          {/* shortcuts pause while a dialog (or the builder's own editor) is on top */}
+          <Shell actions={actions} active={!builder && !confirm} />
+          {confirm && (
+            <Modal title="Edit custom component?" onClose={() => setConfirm(null)}>
+              <p>
+                Open <strong>{confirm.name}</strong> in the component builder?
+              </p>
+              <p className="ed-modal-note">
+                Changes apply to the component from now on. Copies already placed on pages keep their current content.
+              </p>
+              <div className="ed-modal-actions">
+                <button type="button" className="ed-btn" onClick={() => setConfirm(null)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="ed-btn primary"
+                  autoFocus
+                  onClick={() => {
+                    setBuilder({ def: confirm })
+                    setConfirm(null)
+                  }}
+                >
+                  Edit
+                </button>
+              </div>
+            </Modal>
+          )}
+          {builder && <CustomBuilder def={builder.def} onClose={() => setBuilder(null)} />}
+        </CustomContext.Provider>
+      </VariantContext.Provider>
     </StoreContext.Provider>
   )
 }
 
-function Shell({ actions }: { actions: EditorProps['actions'] }) {
+function Shell({ actions, active }: { actions: EditorProps['actions']; active: boolean }) {
   const api = useEditorStoreApi()
   const config = useEditorStore((s) => s.config)
   const [dragLabel, setDragLabel] = useState<string | null>(null)
@@ -50,6 +116,7 @@ function Shell({ actions }: { actions: EditorProps['actions'] }) {
   // keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!active) return
       const t = e.target as HTMLElement
       if (t.closest('input, textarea, select, [contenteditable]')) return
       const st = api.getState()
@@ -70,7 +137,7 @@ function Shell({ actions }: { actions: EditorProps['actions'] }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [api])
+  }, [api, active])
 
   const locate = (x: number, y: number) => {
     const els = document.elementsFromPoint(x, y)
@@ -163,7 +230,6 @@ function Shell({ actions }: { actions: EditorProps['actions'] }) {
     >
       <div className="ed-root">
         <Toolbar actions={actions} />
-        <FormatBar />
         <div className="ed-body">
           <Palette />
           <Canvas />
@@ -185,6 +251,7 @@ function Toolbar({ actions }: { actions: EditorProps['actions'] }) {
   const zoom = useEditorStore((s) => s.zoom)
   const demo = useEditorStore((s) => s.demo)
   const st = api.getState()
+  const component = useVariant() === 'component'
   const fileRef = useRef<HTMLInputElement>(null)
 
   const exportJson = () => {
@@ -206,7 +273,14 @@ function Toolbar({ actions }: { actions: EditorProps['actions'] }) {
 
   return (
     <header className="ed-toolbar">
-      <input className="ed-name" value={name} onChange={(e) => st.setName(e.target.value)} aria-label="Template name" />
+      {component && <span className="ed-name-label">Component name</span>}
+      <input
+        className="ed-name"
+        value={name}
+        placeholder={component ? 'e.g. School page header' : undefined}
+        onChange={(e) => st.setName(e.target.value)}
+        aria-label={component ? 'Component name' : 'Template name'}
+      />
       <div className="ed-group">
         <button disabled={!canUndo} onClick={() => st.undo()} title="Undo (⌘Z)">↶</button>
         <button disabled={!canRedo} onClick={() => st.redo()} title="Redo (⇧⌘Z)">↷</button>
@@ -225,19 +299,23 @@ function Toolbar({ actions }: { actions: EditorProps['actions'] }) {
           Demo content: {demo ? 'on' : 'off'}
         </button>
       </div>
-      <div className="ed-group">
-        <button onClick={() => st.addPage(activePageId)}>+ Page</button>
-        <button onClick={() => st.duplicatePage(activePageId)}>Duplicate</button>
-        <button onClick={() => st.movePage(activePageId, -1)} title="Move page up">↑</button>
-        <button onClick={() => st.movePage(activePageId, 1)} title="Move page down">↓</button>
-        <button disabled={pages.length < 2} onClick={() => st.removePage(activePageId)}>Delete page</button>
-      </div>
+      {!component && (
+        <div className="ed-group">
+          <button onClick={() => st.addPage(activePageId)}>+ Page</button>
+          <button onClick={() => st.duplicatePage(activePageId)}>Duplicate</button>
+          <button onClick={() => st.movePage(activePageId, -1)} title="Move page up">↑</button>
+          <button onClick={() => st.movePage(activePageId, 1)} title="Move page down">↓</button>
+          <button disabled={pages.length < 2} onClick={() => st.removePage(activePageId)}>Delete page</button>
+        </div>
+      )}
       <div className="ed-spacer" />
-      <div className="ed-group">
-        <button onClick={() => fileRef.current?.click()}>Import JSON</button>
-        <button onClick={exportJson}>Export JSON</button>
-        <input ref={fileRef} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
-      </div>
+      {!component && (
+        <div className="ed-group">
+          <button onClick={() => fileRef.current?.click()}>Import JSON</button>
+          <button onClick={exportJson}>Export JSON</button>
+          <input ref={fileRef} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
+        </div>
+      )}
       {actions?.({ getTemplate: () => api.getState().template })}
     </header>
   )

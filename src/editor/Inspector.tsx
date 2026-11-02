@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { SPANS, findNode, spanLabel } from '../core/tree'
 import type { PageSettings } from '../core/types'
-import { useEditorStore, useEditorStoreApi } from './context'
+import { useEditorStore, useEditorStoreApi, useVariant } from './context'
 import { FieldInput } from './Fields'
 
 export function Inspector() {
@@ -80,6 +80,18 @@ function ComponentPanel({ id }: { id: string }) {
 const SIZES: PageSettings['size'][] = ['A3', 'A4', 'A5', 'Letter', 'Legal', 'Custom']
 
 function DocumentPanel() {
+  const component = useVariant() === 'component'
+  if (component) {
+    return (
+      <>
+        <div className="ed-panel-title">Custom component</div>
+        <div className="ed-hint">
+          Build the component from the blocks on the left. Name it in the toolbar, then Save: it becomes a component in the
+          palette. The canvas is a full page width so layouts match where you will use it.
+        </div>
+      </>
+    )
+  }
   const template = useEditorStore((s) => s.template)
   const api = useEditorStoreApi()
   const st = api.getState()

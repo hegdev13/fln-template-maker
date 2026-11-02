@@ -111,7 +111,7 @@ export interface SpacerProps {
 }
 export const Spacer: ComponentConfig<SpacerProps> = {
   label: 'Spacer',
-  category: 'Basic',
+  category: 'Layout',
   fields: { height: { type: 'number', label: 'Height (mm)', min: 1, max: 200 } },
   defaultProps: { height: 10 },
   render: function SpacerRender({ height }) {
@@ -126,7 +126,7 @@ export interface DividerProps {
 }
 export const Divider: ComponentConfig<DividerProps> = {
   label: 'Divider',
-  category: 'Basic',
+  category: 'Layout',
   fields: {
     style: {
       type: 'select',

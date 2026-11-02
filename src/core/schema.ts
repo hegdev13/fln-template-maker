@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { ComponentData, PageSettings, Template } from './types'
 
-const componentSchema: z.ZodType<ComponentData> = z.lazy(() =>
+export const componentSchema: z.ZodType<ComponentData> = z.lazy(() =>
   z.object({
     id: z.string(),
     type: z.string(),

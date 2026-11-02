@@ -1,6 +1,6 @@
-import { StrictMode, useState } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Editor, createEmptyTemplate, parseTemplate, type Template } from '../src'
+import { Editor, createEmptyTemplate, parseTemplate, type CustomComponentDef, type Template } from '../src'
 import '../src/styles/document.css'
 import '../src/styles/editor.css'
 import { config } from './config'
@@ -29,9 +29,31 @@ async function download(template: Template, answerKey: boolean) {
   window.open(url, '_blank')
 }
 
+// Custom components are stored as one JSON file each in ./custom-components, through the dev server.
+async function loadCustomComponents(): Promise<CustomComponentDef[]> {
+  const res = await fetch('/api/custom-components')
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+async function saveCustomComponent(def: CustomComponentDef): Promise<CustomComponentDef> {
+  const res = await fetch(`/api/custom-components/${def.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
 function App() {
   const [initial] = useState(load)
   const [busy, setBusy] = useState(false)
+  const [custom, setCustom] = useState<CustomComponentDef[] | null>(null)
+  useEffect(() => {
+    loadCustomComponents().then(setCustom, () => setCustom([]))
+  }, [])
+  if (!custom) return null // wait so placed custom components don't flash as "unknown"
   const run = async (t: Template, key: boolean) => {
     setBusy(true)
     try {
@@ -46,6 +68,13 @@ function App() {
     <Editor
       config={config}
       data={initial}
+      customComponents={{
+        items: custom,
+        onSave: async (def) => {
+          const saved = await saveCustomComponent(def)
+          setCustom((prev) => [...(prev ?? []).filter((d) => d.id !== saved.id), saved].sort((a, b) => a.name.localeCompare(b.name)))
+        },
+      }}
       onChange={(t) => localStorage.setItem(KEY, JSON.stringify(t))}
       actions={({ getTemplate }) => (
         <div className="ed-group">

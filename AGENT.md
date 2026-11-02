@@ -5,7 +5,7 @@ This file is the hand-off for any agent or session picking this project up cold.
 ## Rules of engagement (do these before anything else)
 
 1. **Read `TREESTRUCTURE.md` first.** It lists every file with a one-line description. Locate code through it. Do not grep or glob around aimlessly; only search after the tree has told you which files are plausible.
-2. **Read `STEPS.md`** for what is done / open, then `SRS.md` for requirements. Tick items in STEPS.md as you finish them.
+2. **Read `TODO.md`** for what is open and done, then `SRS.md` for requirements. Tick items in TODO.md as you finish them. `SETUP.md` covers running the project.
 3. **Log every notable change in `CHANGELOG.md`** under `[Unreleased]` (Keep a Changelog format: Added / Changed / Deprecated / Removed / Fixed / Security; newest first).
 4. **Keep `TREESTRUCTURE.md` true.** Any time a file is added, moved, renamed or removed, update it in the same change.
 5. Update `SRS.md` when behaviour/requirements change, and this file when the vision, rules or architecture decisions change.
@@ -34,6 +34,7 @@ It is a library/fork base, not an app for one customer. Its first consumer is th
 - **Layout model**: every zone (page body or slot) is a CSS grid of **24 columns**. A component's width is `span` in 12ths (1–12 = 1/12 … full), placed with `cellProps()` (`src/core/runtime.tsx`); `align` (left/center/right) positions narrower items; `height` is a min-height in mm. Narrower components share rows.
 - **Editor**: zustand vanilla store with immer + undo/redo (`src/core/store.ts`), dnd-kit drag with manual hit-testing (`src/editor/Editor.tsx`), selection bar + resize handles + snap guides (`src/editor/Canvas.tsx`), rulers that carry measurements (`src/editor/Rulers.tsx`).
 - **PDF**: `src/pdf/export.ts` drives headless Chromium (Playwright) against `print.html`, which renders the same components via `PrintApp`. `server/index.ts` exposes `POST /api/pdf` for the playground.
+- **Page flow**: a top-level component that runs past the bottom margin moves, with everything after it, to the top of the next page (`findOverflow` in `src/core/overflow.ts` measures the DOM, `spillToNextPage` in `src/core/tree.ts` moves the data). The editor does it silently (not an undo step; paused while typing, resizing, in demo mode and in the custom-component builder); `PrintApp` repeats it before the PDF is made. The first component on a page never moves.
 - **Randomisation**: `resolveTemplate(template, config, { seed })` runs `resolveData` hooks with a per-component seeded RNG; same seed ⇒ same output; the saved template is never mutated.
 - **Placeholders vs demo**: builder defaults are generic ("Question", "Option 1", "Statement 1"). Realistic sample content lives in each component's `demoProps` and shows only when the toolbar's **Demo content** toggle is on (never saved or exported).
 
@@ -43,6 +44,7 @@ It is a library/fork base, not an app for one customer. Its first consumer is th
 - Builder-only, English-only for now; FLN data is mocked/pluggable.
 - Zones are grids; resizing snaps the dragged edge to the zone's twelfth lines (page margins for top-level components) with a dotted snap grid; height snaps to page quarters with a red guide; measurements/labels render **on the rulers**, not on the page.
 - SVG authoring is on hold: SVG fields exist as raw markup; no upload/asset store yet.
+- **Custom components** (`src/core/custom.ts`, `src/editor/CustomBuilder.tsx`): authors compose built-in blocks in a pop-up (the same `<Editor>` with `variant="component"`), saved as JSON in `custom-components/<id>.json` by the host (dev server API) and registered as type `custom:<id>` (a container whose slot starts with a copy of the blocks, fresh ids). Copy semantics, not live links: editing a definition affects new uses only. Hosts opt in by passing `customComponents={{ items, onSave }}`; the PDF print page needs the definitions too (`exportPdf({ customComponents })`).
 - Text formatting lives on the text, not the component: `<RichText>` stores sanitized HTML (Tiptap editor, code-split, editor-only; the PDF renders the saved HTML). Component-level typography props are only the base size/colour/font. Rich values are edited on the page (inspector shows a read-only hint) and driven by the format bar (`activeEditor` in the store).
 - **Output is greyscale: no colour anywhere in text styling** (no colour picker; colours in old templates are dropped by the sanitizer).
 - Side handles move the dragged edge and pin the other: the result is saved as an explicit start column `col` (1–24) plus `span`; the Align buttons clear `col`.
@@ -66,8 +68,8 @@ npm run typecheck  # tsc --noEmit
 
 ## Git
 
-The repo is initialised on branch `main`. Only commit when the user asks. Commit messages should end with the attribution lines from the session's instructions.
+Two long-lived branches: `main` is the basic builder (no JSON import/export, no custom components, no answer-key PDF, no TODO.md); `dev` has everything. Shared fixes are made on `dev` and carried to `main` by hand, leaving the dev-only features out. Only commit when the user asks. Commit messages should end with the attribution lines from the session's instructions.
 
 ## Where to go next
 
-See `STEPS.md` ("Hardening / next"). Typical next work: page-overflow warnings, outline panel, e2e tests, asset/SVG upload + asset resolver hook, Indic fonts, packaging as a library.
+See `TODO.md`. Typical next work: packaging as a library, the GitHub Action, e2e tests, outline panel, asset/SVG upload, Indic fonts.

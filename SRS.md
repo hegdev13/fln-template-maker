@@ -36,6 +36,8 @@ Out: FLN data/DB/APIs, auth, multi-user collaboration, template storage backend,
 - FR25 The dragged edge snaps to any twelfth line (1/12 … full) of the zone's grid — the page content area for top-level components — rather than to distances measured from the component.
 - FR23 Dragging a side handle moves that edge while the opposite edge stays fixed (stored as an explicit start column `col`); the width still snaps to the allowed fractions and is limited to the room available.
 - FR24 Table component (Layout): choose rows × columns, edit cells with rich text, resize columns and rows by dragging borders, header row, border style.
+- FR26 Authors can build custom components from the built-in ones in a pop-up builder; each is saved as a JSON file (`custom-components/<id>.json`), appears in the palette as a component of its own, and can be edited later (pencil on hover, with a confirmation first). Placed copies are independent of later edits to the definition.
+- FR27 Automatic page flow: when a top-level component (or the rest of the page after it) runs past the bottom margin it moves to the top of the next page, creating a page if needed, in the editor and in the exported PDF.
 - FR12 Hosts can add/replace components and categories, and supply custom field renderers.
 
 ## 5. Non-functional requirements
@@ -53,5 +55,5 @@ React 18+, modern Chromium for rendering. Chrome/Chromium must be available to P
 ## 7. Extension requirements
 Per-component resolvers, custom fields, metadata, host-provided component sets, seed-driven randomisation, host-controlled storage (`onChange`, `data`).
 
-## 8. Known gaps (see STEPS.md)
-No overflow warning when a page's content exceeds its height; no outline panel; no upload/asset fields; Latin fonts only; no e2e tests yet.
+## 8. Known gaps (see TODO.md)
+No pull-back of content when a page has room again; components taller than a page are not split; no outline panel; no upload/asset fields; Latin fonts only; no e2e tests or CI; not yet packaged as a library.

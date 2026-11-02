@@ -109,11 +109,24 @@ export function hasRichText(config: Config, type: string): boolean {
   )
 }
 
+/** Gives every node in these (cloned) trees a new id, so copies of preset content never share ids. */
+function freshIds(config: Config, nodes: ComponentData[]) {
+  for (const n of nodes) {
+    n.id = newId()
+    for (const slot of slotNames(config, n.type)) {
+      if (Array.isArray(n.props[slot])) freshIds(config, n.props[slot])
+    }
+  }
+}
+
 export function createNode(config: Config, type: string, props?: Record<string, any>): ComponentData {
   const cfg = config.components[type]
   if (!cfg) throw new Error(`Unknown component type "${type}"`)
   const base = structuredClone(cfg.defaultProps ?? {})
-  for (const slot of slotNames(config, type)) base[slot] = base[slot] ?? []
+  for (const slot of slotNames(config, type)) {
+    base[slot] = base[slot] ?? []
+    freshIds(config, base[slot]) // a component's default content (e.g. a custom component's blocks) is per-copy
+  }
   return { id: newId(), type, props: { ...base, ...props } }
 }
 
@@ -217,4 +230,23 @@ const SIZES_MM: Record<string, [number, number]> = {
 export function pageDimensions(page: PageSettings): { width: number; height: number } {
   const [w, h] = page.size === 'Custom' ? [page.customWidth ?? 210, page.customHeight ?? 297] : SIZES_MM[page.size]
   return page.orientation === 'landscape' ? { width: h, height: w } : { width: w, height: h }
+}
+
+/**
+ * Moves a top-level component, and every component after it, to the top of the next page (creating
+ * one when this is the last page). Used when a page overflows. Pure: never mutates `template`.
+ * The first component of a page never moves (it could not fit on a fresh page either).
+ */
+export function spillToNextPage(template: Template, pageId: string, nodeId: string): Template {
+  const pi = template.pages.findIndex((p) => p.id === pageId)
+  if (pi < 0) return template
+  const content = template.pages[pi].content
+  const ci = content.findIndex((n) => n.id === nodeId)
+  if (ci <= 0) return template
+  const moved = content.slice(ci)
+  const pages = [...template.pages]
+  pages[pi] = { ...pages[pi], content: content.slice(0, ci) }
+  if (pi + 1 < pages.length) pages[pi + 1] = { ...pages[pi + 1], content: [...moved, ...pages[pi + 1].content] }
+  else pages.push({ id: newId(), content: moved })
+  return { ...template, pages }
 }

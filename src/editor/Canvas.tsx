@@ -1,10 +1,12 @@
 import { useDraggable } from '@dnd-kit/core'
-import { useLayoutEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { findOverflow } from '../core/overflow'
 import { RenderComponent, PageSheet, RuntimeProvider, cellProps, type Runtime, type ZoneProps } from '../core/runtime'
 import type { RulerMark } from '../core/store'
 import { SPANS, pageDimensions, snapEdgeSpan, spanLabel } from '../core/tree'
 import type { ComponentData } from '../core/types'
-import { useEditorStore, useEditorStoreApi } from './context'
+import { useEditorStore, useEditorStoreApi, useVariant } from './context'
+import { FormatBar } from './FormatBar'
 import { Rulers } from './Rulers'
 
 const MM_PX = 96 / 25.4
@@ -307,6 +309,7 @@ export function Canvas() {
   const demo = useEditorStore((s) => s.demo)
   const api = useEditorStoreApi()
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null)
+  const component = useVariant() === 'component'
 
   const rich = useMemo<NonNullable<Runtime['rich']>>(
     () => ({
@@ -316,17 +319,32 @@ export function Canvas() {
     [api],
   )
   const rt: Runtime = { config, mode: 'edit', demo, rich, Node: EditorNode, Zone: EditorZone }
+
+  // Page overflow: a component that runs past the bottom margin moves to the top of the next page.
+  // Paused while resizing or typing (so the block under your hands does not jump away), in demo mode
+  // (sample content would leave moved blocks behind) and in the custom-component builder (one page).
+  const resizing = useEditorStore((s) => !!s.rulerMarks)
+  const typing = useEditorStore((s) => !!s.activeEditor)
+  useEffect(() => {
+    if (component || demo || resizing || typing || !scroller) return
+    const timer = setTimeout(() => {
+      const hit = findOverflow(scroller, template.page)
+      if (hit) api.getState().spillOver(hit.pageId, hit.nodeId)
+    }, 30)
+    return () => clearTimeout(timer)
+  }, [template, component, demo, resizing, typing, scroller, api])
   return (
     <div className="ed-canvas-wrap">
       <Rulers scroller={scroller} />
+      <FormatBar />
       <div className="ed-canvas" ref={setScroller} onClick={() => api.getState().select(null)}>
       <RuntimeProvider value={rt}>
         <div className="ed-pages" style={{ zoom, ['--ed-zoom' as any]: zoom }}>
           {template.pages.map((page, i) => (
             <div key={page.id} className="ed-page-wrap" onClick={() => api.getState().setActivePage(page.id)}>
               <div className="ed-page-label">
-                Page {i + 1}
-                {page.id === activePageId && template.pages.length > 1 ? ' •' : ''}
+                {component ? 'Component layout (page width)' : `Page ${i + 1}`}
+                {!component && page.id === activePageId && template.pages.length > 1 ? ' •' : ''}
               </div>
               <div className={page.id === activePageId ? 'ed-page active' : 'ed-page'}>
                 <PageSheet template={template} page={page} />

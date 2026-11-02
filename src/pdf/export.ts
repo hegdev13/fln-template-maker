@@ -2,6 +2,7 @@
  * Server-side PDF export (Node only). Renders the app's /print route in headless Chromium
  * and returns a PDF buffer. Template + seed are passed to the page via window.__PTB__.
  */
+import type { CustomComponentDef } from '../core/custom'
 import type { Template } from '../core/types'
 import { pageDimensions } from '../core/tree'
 
@@ -12,6 +13,8 @@ export interface ExportPdfOptions {
   seed?: string | number
   /** Forces showAnswers=true on every component that supports it (answer key). */
   answerKey?: boolean
+  /** Saved custom components, so the print page can render placed copies of them. */
+  customComponents?: CustomComponentDef[]
   /** Path to a Chrome/Chromium executable; defaults to Playwright's bundled browser, then system Chrome. */
   executablePath?: string
 }
@@ -33,7 +36,7 @@ export async function exportPdf(opts: ExportPdfOptions): Promise<Buffer> {
       (payload) => {
         ;(window as any).__PTB__ = payload
       },
-      { template: opts.template, seed: opts.seed ?? 'default', answerKey: !!opts.answerKey },
+      { template: opts.template, seed: opts.seed ?? 'default', answerKey: !!opts.answerKey, customComponents: opts.customComponents ?? [] },
     )
     await page.goto(`${opts.baseUrl.replace(/\/$/, '')}/print.html`, { waitUntil: 'networkidle' })
     await page.waitForFunction(() => (window as any).__PTB_READY__ === true, undefined, { timeout: 30000 })

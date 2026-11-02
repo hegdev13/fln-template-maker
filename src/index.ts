@@ -11,5 +11,6 @@ export { defaultConfig } from './components'
 export * from './components'
 export { RichText, type RichTextProps } from './components/RichText'
 export { sanitizeRichHtml, stripRichHtml, isPlainText } from './core/sanitize'
+export * from './core/custom'
 export { PrintApp, type PrintPayload } from './pdf/PrintApp'
 // Server-only: import { exportPdf } from './pdf/export' (requires playwright).

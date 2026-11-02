@@ -4,6 +4,8 @@ import { useEditorStore } from './context'
 
 /** Ruler thickness in px. Keep in sync with --ed-ruler in editor.css. */
 export const RULER = 24
+/** Space between a ruler and the page, where snap labels are drawn. Keep in sync with .ed-canvas padding. */
+const GAP = 48
 
 interface Geometry {
   /** Ruler-local px of the active page's left / top edge. */
@@ -73,12 +75,24 @@ export function Rulers({ scroller }: { scroller: HTMLDivElement | null }) {
             <Ticks axis="h" geo={geo} lengthMm={page.width} />
             {geo.sel && <Band axis="h" geo={geo} a={geo.sel.x0} b={geo.sel.x1} />}
             {marks?.h.map((m, i) => <Mark key={i} axis="h" geo={geo} mark={m} />)}
+            {geo.sel && <SizeCapsule axis="h" geo={geo} a={geo.sel.x0} b={geo.sel.x1} />}
           </svg>
+          {marks && (
+            <svg className="ed-callouts ed-callouts-h" width={geo.width} height={GAP}>
+              {marks.h.map((m, i) => <Callout key={i} axis="h" geo={geo} mark={m} />)}
+            </svg>
+          )}
           <svg className="ed-ruler ed-ruler-v" width={RULER} height={geo.height}>
             <Ticks axis="v" geo={geo} lengthMm={page.height} />
             {geo.sel && <Band axis="v" geo={geo} a={geo.sel.y0} b={geo.sel.y1} />}
             {marks?.v.map((m, i) => <Mark key={i} axis="v" geo={geo} mark={m} />)}
+            {geo.sel && <SizeCapsule axis="v" geo={geo} a={geo.sel.y0} b={geo.sel.y1} />}
           </svg>
+          {marks && (
+            <svg className="ed-callouts ed-callouts-v" width={GAP} height={geo.height}>
+              {marks.v.map((m, i) => <Callout key={i} axis="v" geo={geo} mark={m} />)}
+            </svg>
+          )}
         </>
       )}
     </div>
@@ -120,54 +134,74 @@ function Ticks({ axis, geo, lengthMm }: { axis: 'h' | 'v'; geo: Geometry; length
   return <>{out}</>
 }
 
-/** Highlights the selected component's extent, with its size written in the band. */
+/** Highlights the selected component's extent on the ruler. */
 function Band({ axis, geo, a, b }: { axis: 'h' | 'v'; geo: Geometry; a: number; b: number }) {
   const p0 = at(axis, geo, a)
   const p1 = at(axis, geo, b)
-  const size = Math.round((b - a) * 10) / 10
-  const label = `${size}`
-  const fits = p1 - p0 > 34
   return axis === 'h' ? (
     <g>
       <rect x={p0} y={0} width={Math.max(1, p1 - p0)} height={RULER} className="ed-band" />
       <line x1={p0} x2={p0} y1={0} y2={RULER} className="ed-band-edge" />
       <line x1={p1} x2={p1} y1={0} y2={RULER} className="ed-band-edge" />
-      {fits && <text x={(p0 + p1) / 2} y={RULER - 9} textAnchor="middle" className="ed-bandlabel">{label}</text>}
     </g>
   ) : (
     <g>
       <rect x={0} y={p0} width={RULER} height={Math.max(1, p1 - p0)} className="ed-band" />
       <line y1={p0} y2={p0} x1={0} x2={RULER} className="ed-band-edge" />
       <line y1={p1} y2={p1} x1={0} x2={RULER} className="ed-band-edge" />
-      {fits && <text x={RULER - 9} y={(p0 + p1) / 2} textAnchor="middle" className="ed-bandlabel" transform={`rotate(-90 ${RULER - 9} ${(p0 + p1) / 2})`}>{label}</text>}
     </g>
   )
 }
 
+/** The selected component's size (mm) in a white capsule drawn above the ruler's ticks and band. */
+function SizeCapsule({ axis, geo, a, b }: { axis: 'h' | 'v'; geo: Geometry; a: number; b: number }) {
+  const label = String(Math.round((b - a) * 10) / 10)
+  const mid = (at(axis, geo, a) + at(axis, geo, b)) / 2
+  const w = label.length * 6.5 + 14
+  const h = 16
+  const o = (RULER - h) / 2
+  return axis === 'h' ? (
+    <g className="ed-capsule">
+      <rect x={mid - w / 2} y={o} width={w} height={h} rx={h / 2} />
+      <text x={mid} y={o + 11.5} textAnchor="middle">{label}</text>
+    </g>
+  ) : (
+    <g className="ed-capsule">
+      <rect x={o} y={mid - w / 2} width={h} height={w} rx={h / 2} />
+      <text x={RULER / 2 + 3.5} y={mid} textAnchor="middle" transform={`rotate(-90 ${RULER / 2 + 3.5} ${mid})`}>{label}</text>
+    </g>
+  )
+}
+
+/** The snap line itself, drawn across the ruler. */
 function Mark({ axis, geo, mark }: { axis: 'h' | 'v'; geo: Geometry; mark: { mm: number; label: string; tone: 'normal' | 'active' } }) {
   const p = at(axis, geo, mark.mm)
-  const red = mark.tone === 'active'
-  const cls = red ? 'ed-mark on' : 'ed-mark'
-  const w = mark.label.length * 6 + 8
+  const cls = mark.tone === 'active' ? 'ed-mark on' : 'ed-mark'
+  return (
+    <g className={cls}>
+      {axis === 'h' ? <line x1={p} x2={p} y1={0} y2={RULER} /> : <line y1={p} y2={p} x1={0} x2={RULER} />}
+    </g>
+  )
+}
+
+/** Label box in the gap between the ruler and the page, with a pointer to the exact spot on the ruler. */
+function Callout({ axis, geo, mark }: { axis: 'h' | 'v'; geo: Geometry; mark: { mm: number; label: string; tone: 'normal' | 'active' } }) {
+  if (!mark.label) return null
+  const p = at(axis, geo, mark.mm)
+  const cls = mark.tone === 'active' ? 'ed-callout on' : 'ed-callout'
+  const w = mark.label.length * 6.5 + 10
+  const h = 16
   return axis === 'h' ? (
     <g className={cls}>
-      <line x1={p} x2={p} y1={0} y2={RULER} />
-      {mark.label && (
-        <>
-          <rect x={p + 2} y={2} width={w} height={13} rx={3} />
-          <text x={p + 6} y={12}>{mark.label}</text>
-        </>
-      )}
+      <polygon points={`${p - 4},7 ${p + 4},7 ${p},0`} />
+      <rect x={p - w / 2} y={7} width={w} height={h} rx={3} />
+      <text x={p} y={18.5} textAnchor="middle">{mark.label}</text>
     </g>
   ) : (
     <g className={cls}>
-      <line y1={p} y2={p} x1={0} x2={RULER} />
-      {mark.label && (
-        <>
-          <rect x={2} y={p + 2} width={RULER - 4} height={13} rx={3} />
-          <text x={RULER / 2} y={p + 12} textAnchor="middle">{mark.label}</text>
-        </>
-      )}
+      <polygon points={`7,${p - 4} 7,${p + 4} 0,${p}`} />
+      <rect x={7} y={p - h / 2} width={w} height={h} rx={3} />
+      <text x={7 + w / 2} y={p + 3.5} textAnchor="middle">{mark.label}</text>
     </g>
   )
 }
