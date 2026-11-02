@@ -9,6 +9,7 @@ import {
   moveNodeMut,
   newId,
   removeNodeMut,
+  spillToNextPage,
 } from './tree'
 import type { ComponentData, Config, PageSettings, Template, ZoneRef } from './types'
 
@@ -77,6 +78,11 @@ export interface EditorState {
   /** Minimum height in mm; undefined clears it (natural height). */
   setHeight(id: string, mm: number | undefined): void
 
+  /**
+   * Page overflow: moves a top-level component (and those after it) to the top of the next page. Not an
+   * undo step: undoing the edit that caused it brings the old layout back.
+   */
+  spillOver(pageId: string, nodeId: string): void
   addPage(afterPageId?: string): void
   duplicatePage(id: string): void
   removePage(id: string): void
@@ -233,6 +239,13 @@ export function createEditorStore(config: Config, initial: Template) {
           else found.node.height = Math.round(mm * 2) / 2
         }, `height:${id}`),
 
+      spillOver: (pageId, nodeId) => {
+        const { template, selectedId } = get()
+        const next = spillToNextPage(template, pageId, nodeId)
+        if (next === template) return
+        const pageOfSelection = selectedId ? findPageOf(next, config, selectedId) : null
+        set({ template: next, ...(pageOfSelection ? { activePageId: pageOfSelection } : {}) })
+      },
       addPage: (afterPageId) => {
         const page = { id: newId(), content: [] }
         commit((d) => {

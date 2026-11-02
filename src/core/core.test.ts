@@ -208,3 +208,27 @@ describe('twelfth snapping', () => {
     expect(snapEdgeSpan('right', 24, 24, 24)).toBeUndefined()
   })
 })
+
+describe('page overflow', () => {
+  it('moves a component and the ones after it to the top of the next page', () => {
+    const s = createEditorStore(cfg, createEmptyTemplate())
+    const ids = ['Heading', 'Text', 'Divider', 'Spacer'].map((t) => s.getState().addComponent(t)!)
+    const before = s.getState().template
+    s.getState().spillOver(before.pages[0].id, ids[2])
+    const after = s.getState().template
+    expect(after.pages).toHaveLength(2)
+    expect(after.pages[0].content.map((n) => n.id)).toEqual(ids.slice(0, 2))
+    expect(after.pages[1].content.map((n) => n.id)).toEqual(ids.slice(2))
+    expect(before.pages[0].content).toHaveLength(4) // input untouched
+    // overflow into an existing page goes in front of its content
+    s.getState().spillOver(after.pages[0].id, ids[1])
+    expect(s.getState().template.pages[1].content.map((n) => n.id)).toEqual([ids[1], ids[2], ids[3]])
+  })
+
+  it('never moves the first component of a page', () => {
+    const s = createEditorStore(cfg, createEmptyTemplate())
+    const id = s.getState().addComponent('Heading')!
+    s.getState().spillOver(s.getState().template.pages[0].id, id)
+    expect(s.getState().template.pages).toHaveLength(1)
+  })
+})

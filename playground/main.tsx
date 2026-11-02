@@ -18,11 +18,11 @@ const load = (): Template => {
 // so the builder has no seed input; previews/exports use this fixed one.
 const PREVIEW_SEED = 'preview'
 
-async function download(template: Template, answerKey: boolean) {
+async function download(template: Template) {
   const res = await fetch('/api/pdf', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ template, seed: PREVIEW_SEED, answerKey }),
+    body: JSON.stringify({ template, seed: PREVIEW_SEED }),
   })
   if (!res.ok) throw new Error(await res.text())
   const url = URL.createObjectURL(await res.blob())
@@ -32,10 +32,10 @@ async function download(template: Template, answerKey: boolean) {
 function App() {
   const [initial] = useState(load)
   const [busy, setBusy] = useState(false)
-  const run = async (t: Template, key: boolean) => {
+  const run = async (t: Template) => {
     setBusy(true)
     try {
-      await download(t, key)
+      await download(t)
     } catch (e) {
       alert((e as Error).message)
     } finally {
@@ -49,8 +49,7 @@ function App() {
       onChange={(t) => localStorage.setItem(KEY, JSON.stringify(t))}
       actions={({ getTemplate }) => (
         <div className="ed-group">
-          <button disabled={busy} onClick={() => run(getTemplate(), false)}>{busy ? 'Rendering…' : 'Export PDF'}</button>
-          <button disabled={busy} onClick={() => run(getTemplate(), true)}>Answer key PDF</button>
+          <button disabled={busy} onClick={() => run(getTemplate())}>{busy ? 'Rendering…' : 'Export PDF'}</button>
         </div>
       )}
     />

@@ -7,8 +7,9 @@ Newest first. Add every user-visible or API-visible change under `[Unreleased]` 
 ## [Unreleased]
 
 ### Added
+- Automatic page flow: a component that runs past the bottom margin moves, with everything after it, to the top of the next page (a page is created when needed). Works in the editor (silently, paused while typing or resizing and in demo mode) and in the exported PDF. New `findOverflow()`, `spillToNextPage()` and store action `spillOver`.
+- MIT `LICENSE`, `SETUP.md` (requirements, install, commands, troubleshooting).
 - Width now snaps to any twelfth of the zone (1/12 … full) instead of only 1/4, 1/3, 1/2, 2/3, 3/4, full. The snap lines are fixed lines of the page's 12-column grid (measured from the page margins for top-level components), not distances from the component itself; the dragged edge lands on the nearest line and the ruler labels the active width (and 1/4, 1/3, 1/2, 2/3, 3/4). The inspector's Width dropdown lists all twelfths.
-- "+ Custom" button at the end of the palette's Questions group. It is a placeholder: it opens a "Work in progress" popup. Needs discussion (see STEPS.md).
 - Table component (Layout): choose rows × columns, type in cells with the same per-letter formatting, drag column borders (neighbouring columns trade width) and row borders (minimum heights), optional shaded header row, borders (all / outside / none), text align, cell padding. Resizes like any component (width snaps, bottom handle sets height and rows share it).
 - Per-letter text formatting: click any text on the page and style individual letters (bold, italic, underline, strikethrough, size, colour, font) from a new Text format bar under the toolbar. Backed by Tiptap; stored as sanitized HTML in the component's props and rendered the same way in the editor, preview and PDF. Used by Heading, Text, MCQ question/options, True/False statements, Match items, Sequence captions, and instructions/titles/questions in Fill-in-the-blank and Practice. New `richtext` field type, `<RichText>` component and `sanitizeRichHtml()`.
 - README.md with overview, quick start and embedding / resolver / PDF examples.
@@ -29,6 +30,12 @@ Newest first. Add every user-visible or API-visible change under `[Unreleased]` 
 - Drop-position hit-testing is row-aware for side-by-side components.
 
 ### Changed
+- README brought up to date (dev-only server and no-authentication note, current limits, docs list).
+- This branch (`main`) is the basic builder: no JSON import/export, no custom components and no answer-key PDF export. Those live on the `dev` branch.
+- Spacer and Divider moved from the Basic palette group to Layout.
+- The selected component's size (mm) on the rulers is now a white capsule with an accent outline, drawn above the ruler ticks and band, so it stays readable at any width (it used to be small text inside the band and hidden on narrow components).
+- The Text format bar is now a floating island centred between the top ruler and the page (it was a full-width ribbon under the toolbar). It fades out while snap labels are showing.
+- Snap labels (1/4, 1/3, 1/2, 2/3, 3/4 …) while resizing are now boxes in the space between each ruler and the page, with a pointer to the exact spot on the ruler; the line stays on the ruler. The canvas padding grew to 48px to make room.
 - The Text format bar now appears only when text is relevant: while text is being edited, or when the selected component has formatable text (Heading, Text, Table, and the question components). It is hidden for images, spacers, dividers, columns, boxes and when nothing is selected. New optional `ComponentConfig.hasRichText` (defaults to true when a field is `richtext`).
 - Resizing: dragging a side handle now moves that edge and keeps the opposite edge fixed, regardless of alignment (previously the left side stayed put and the width changed from the right). The result is stored as `col` (start column) with `span`; the Align buttons clear it. Width is limited to the room available, and the snap guides/ruler labels are measured from the fixed edge. Optional `col` added to `ComponentData`.
 - Component-level text settings are now a *base* (size / colour / font) in the inspector; bold, italic, underline and strikethrough moved onto the text itself. Heading is bold through its default text (`<strong>`), so letters can be un-bolded. Text, question, option and similar text fields are edited on the page; the inspector shows a read-only hint.
@@ -42,6 +49,8 @@ Newest first. Add every user-visible or API-visible change under `[Unreleased]` 
 - Colour from text styling: the colour picker, "Base text colour" and the Color extension are gone (output is greyscale). The sanitizer now drops `color` / `background-color`.
 
 ### Fixed
+- Content below the bottom margin was cut off silently in the editor and the PDF; it now flows onto the next page.
+- Long text is clipped at the component edge instead of wrapping: text now wraps within its width (including unbroken strings) in the editor, preview and PDF.
 - Duplicate did nothing (structuredClone threw on an immer draft); duplicates now appear immediately below the original, keep their width and nested content, and get selected.
 - Text selection (blue haze) lingering after drag-and-drop: selection is disabled on the canvas/palette and cleared during and after drags.
 
@@ -51,8 +60,8 @@ Newest first. Add every user-visible or API-visible change under `[Unreleased]` 
 - Template model: versioned JSON (`Template`, pages, nested `ComponentData`) with zod validation and a migration hook (`src/core/schema.ts`).
 - Config-driven component registry (`Config` / `ComponentConfig`: fields, defaultProps, render, optional async `resolveData`).
 - Seeded RNG and `resolveTemplate()` so hosts can fetch/randomise content deterministically per seed without mutating the saved template.
-- Drag-and-drop editor (`<Editor>`): palette, multi-page A4/A3/A5/Letter/Legal/Custom canvas, nested slots, reorder/move, duplicate, delete, inspector generated from `fields`, undo/redo, zoom, JSON import/export, keyboard shortcuts.
+- Drag-and-drop editor (`<Editor>`): palette, multi-page A4/A3/A5/Letter/Legal/Custom canvas, nested slots, reorder/move, duplicate, delete, inspector generated from `fields`, undo/redo, zoom, keyboard shortcuts.
 - Built-in components: Page header, Heading, Text, Image/SVG, Spacer, Divider, Columns, Box, Multiple choice, True/False, Match the following, Arrange in order, Fill in the blanks, Practice questions (all with answer-key rendering).
-- PDF export: print route (`print.html`, `PrintApp`) + Playwright `exportPdf()`; Express endpoint `POST /api/pdf` in the playground; answer-key mode.
+- PDF export: print route (`print.html`, `PrintApp`) + Playwright `exportPdf()`; Express endpoint `POST /api/pdf` in the playground.
 - Playground app demonstrating host integration with seeded shuffling resolvers.
-- Project docs: SRS.md, TREESTRUCTURE.md, STEPS.md, CLAUDE.md.
+- Project docs: SRS.md, TREESTRUCTURE.md, CLAUDE.md.

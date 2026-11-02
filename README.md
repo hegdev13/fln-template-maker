@@ -2,7 +2,7 @@
 
 A drag-and-drop template builder for printable PDFs, in the spirit of [Puck](https://github.com/puckeditor/puck) but built for pages: drag components onto A4 sheets, edit them in place, resize and align them, save the layout as JSON, and export it as a PDF.
 
-It is a reusable base (use it as a dependency or fork it). Its first consumer is the FLN worksheet project: printable worksheets for children aged 3–12 who are working on foundational literacy and numeracy. Everything FLN-specific (levels, question bank, SVG store) stays in the host app and plugs in through the extension points below.
+It is meant to become a reusable library; it is not published as a package yet, so today you use it by forking the repo or copying `src/` (packaging is planned). Its first consumer is the FLN worksheet project: printable worksheets for children aged 3–12 who are working on foundational literacy and numeracy. Everything FLN-specific (levels, question bank, SVG store) stays in the host app and plugs in through the extension points below.
 
 > New to the codebase? Read [AGENT.md](./AGENT.md) first, then [TREESTRUCTURE.md](./TREESTRUCTURE.md).
 
@@ -10,13 +10,13 @@ It is a reusable base (use it as a dependency or fork it). Its first consumer is
 
 - **Drag and drop** from a palette onto multi-page canvases (A3, A4, A5, Letter, Legal, custom; portrait or landscape). Nest components inside Columns and Box.
 - **Resize with guides.** Drag a side handle and that edge moves (the other stays put) while it snaps to the page's twelfth lines (1/12 … full), shown as a dotted snap grid. Drag the bottom handle to set a height that snaps to page quarters (the active guide turns red). Narrower components can sit side by side and be aligned left, centre or right.
+- **Automatic page flow.** When a component runs past the bottom margin it moves, with everything after it, to the top of the next page (a page is added if needed), in the editor and in the PDF.
 - **Rulers** in mm on the top and left. The selected component's extent shows on them, and snap measurements are drawn from the ruler rather than on the page.
 - **Rich text on the text itself.** Click any text and style individual letters: bold, italic, underline, strikethrough, size and font. A base size and font can also be set per component. Output is greyscale, so there is no colour picker.
 - **Tables:** pick rows × columns, type in cells (with the same per-letter formatting), drag column and row borders, header row, border styles.
 - **Worksheet components:** multiple choice (inline or stacked, A)/a)/1./no numbering), true/false, match the following, arrange in order, fill in the blanks, practice questions, headers, headings, text, image/SVG, spacer, divider.
-- **Answer keys:** every question type can render its answers.
 - **Placeholders vs demo content:** components start with generic placeholders ("Question", "Option 1"). A toolbar toggle swaps in realistic sample content for previewing.
-- **Undo/redo**, duplicate, zoom, JSON import/export, keyboard shortcuts (⌘Z, ⇧⌘Z, ⌘D, Delete).
+- **Undo/redo**, duplicate, zoom, keyboard shortcuts (⌘Z, ⇧⌘Z, ⌘D, Delete).
 - **PDF export** through headless Chromium, using the same components as the editor.
 - **Seeded randomisation hook:** components can fetch or shuffle their content per seed (for example one worksheet variant per child).
 
@@ -29,7 +29,7 @@ npm test           # unit tests
 npm run typecheck
 ```
 
-PDF export needs Chromium. Playwright's bundled browser is used if installed (`npx playwright install chromium`), otherwise it falls back to Google Chrome on the machine.
+More detail in [SETUP.md](./SETUP.md). PDF export needs Chromium. Playwright's bundled browser is used if installed (`npx playwright install chromium`), otherwise it falls back to Google Chrome on the machine.
 
 ## How it works
 
@@ -130,10 +130,14 @@ Server side (Node):
 ```ts
 import { exportPdf } from './src/pdf/export'
 
-const pdf = await exportPdf({ baseUrl: 'http://localhost:5173', template, seed: 'child-42', answerKey: false })
+const pdf = await exportPdf({ baseUrl: 'http://localhost:5173', template, seed: 'child-42' })
 ```
 
 `exportPdf` opens the app's `print.html` in headless Chromium (see `playground/print.tsx` for the page that renders `<PrintApp>` with your config), so the PDF uses the same components as the editor. The playground server exposes this as `POST /api/pdf`.
+
+### Security: dev server only
+
+The included Express server (`server/index.ts`) is a development playground. It has **no authentication**: `POST /api/pdf` launches a headless browser for anyone who can reach it. Do not expose it to the internet or an untrusted network. A production host should run its own authenticated endpoints and call `exportPdf` itself.
 
 ## Project layout
 
@@ -141,12 +145,18 @@ See [TREESTRUCTURE.md](./TREESTRUCTURE.md) for every file. In short: `src/core` 
 
 ## Status and limits
 
-Early (v0.1). Not yet done: page-overflow warnings, an outline panel, SVG/image upload and an asset store, non-Latin fonts, end-to-end tests, and a packaged library build. See [STEPS.md](./STEPS.md). Fill-in-the-blank sentences and answer keys stay plain text (blanks are marked with `___`).
+Early (v0.1), first release. Known limits: not yet packaged as a library, no CI or end-to-end tests, no outline panel or keyboard reordering, images and SVGs are URL or markup only (no upload), Latin fonts only, content is pushed to the next page but never pulled back, and components taller than a page are not split. Fill-in-the-blank sentences stay plain text (blanks are marked with `___`).
 
 ## Docs
 
 - [AGENT.md](./AGENT.md) — project vision, rules and architecture (start here)
 - [SRS.md](./SRS.md) — requirements
 - [CHANGELOG.md](./CHANGELOG.md) — what changed
-- [STEPS.md](./STEPS.md) — progress and next steps
+- [SETUP.md](./SETUP.md) — install and run
 - [TREESTRUCTURE.md](./TREESTRUCTURE.md) — file map
+
+## License
+
+[MIT](./LICENSE)
+
+This is the basic version of the builder. The `dev` branch adds JSON import/export, custom components and answer-key PDFs.

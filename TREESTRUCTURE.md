@@ -6,7 +6,8 @@
 ├── AGENT.md                  Hand-off: project vision, FLN flow, architecture, rules (read first)
 ├── CLAUDE.md                 Pointer to AGENT.md with the short rules
 ├── SRS.md                    Software requirements specification
-├── STEPS.md                  Implementation steps and status
+├── SETUP.md                  Requirements, install, commands, troubleshooting
+├── LICENSE                   MIT license
 ├── CHANGELOG.md              Keep-a-Changelog history
 ├── TREESTRUCTURE.md          This file
 ├── package.json              Scripts (dev/build/test/typecheck) and deps
@@ -16,7 +17,7 @@
 ├── print.html                Print entry page loaded by headless Chromium for PDF export
 ├── .claude/launch.json       Dev server config for the preview pane
 ├── server/
-│   └── index.ts              Express: Vite middleware (dev)/static (prod) + POST /api/pdf
+│   └── index.ts              Express: Vite middleware (dev)/static (prod); POST /api/pdf
 ├── playground/
 │   ├── config.ts             Demo host config: built-ins + seeded shuffle resolvers (extension-point example)
 │   ├── main.tsx              Playground app: <Editor>, localStorage autosave, PDF buttons, seed input
@@ -26,10 +27,11 @@
     ├── vite-env.d.ts         Vite client types (css imports)
     ├── core/
     │   ├── types.ts          Template, ComponentData, Field, ComponentConfig, Config, ResolveContext
+    │   ├── overflow.ts       findOverflow(): measures rendered pages and finds the component that runs past the bottom margin
     │   ├── sanitize.ts       Allow-list sanitizer + plain-text helpers for rich text HTML
     │   ├── schema.ts         zod schema, parseTemplate(), migration hook
     │   ├── rng.ts            Seeded RNG (mulberry32) with shuffle/sample/pick
-    │   ├── tree.ts           Pure tree ops: find/walk/insert/move/remove/duplicate, zones, page dimensions
+    │   ├── tree.ts           Pure tree ops: find/walk/insert/move/remove/duplicate, zones, page dimensions, spillToNextPage()
     │   ├── store.ts          Zustand vanilla editor store: selection, pages, mutations, undo/redo (immer)
     │   ├── resolve.ts        resolveTemplate(): runs async resolveData hooks per seed (non-mutating)
     │   ├── runtime.tsx       Render runtime: context, RenderComponent, PageSheet, Document, ViewZone
@@ -46,9 +48,9 @@
     │   ├── Editor.tsx        <Editor>: DndContext, hit-testing drop targets, toolbar, shortcuts
     │   ├── Canvas.tsx        Editable page view: EditorNode (select/drag/resize/snap guides) and EditorZone (drop area)
     │   ├── RichEditor.tsx    Tiptap in-place editor behind <RichText> (code-split; editor only)
-    │   ├── FormatBar.tsx     Toolbar row that formats the selected letters of the active text
+    │   ├── FormatBar.tsx     Floating island (between top ruler and page) that formats the selected letters of the active text
     │   ├── Rulers.tsx        Top/side mm rulers: selection extent and snap labels drawn from the ruler
-    │   ├── Palette.tsx       Draggable component list (+ dummy "+ Custom" button and WIP popup)
+    │   ├── Palette.tsx       Draggable component list (grouped by category; double-click to append)
     │   ├── Inspector.tsx     Props panel (component) or document settings panel
     │   ├── Fields.tsx        Field-type inputs (text, number, select, styleToggles, collapsible arrays, showIf, ...)
     │   └── context.tsx       Store React context + hooks

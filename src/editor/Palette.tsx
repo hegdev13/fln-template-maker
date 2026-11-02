@@ -1,5 +1,4 @@
 import { useDraggable } from '@dnd-kit/core'
-import { useState } from 'react'
 import { useEditorStore, useEditorStoreApi } from './context'
 
 function PaletteItem({ type, label }: { type: string; label: string }) {
@@ -21,7 +20,6 @@ function PaletteItem({ type, label }: { type: string; label: string }) {
 
 export function Palette() {
   const config = useEditorStore((s) => s.config)
-  const [wip, setWip] = useState(false)
   const groups = config.categories
     ? Object.values(config.categories).map((c) => ({ title: c.title ?? '', types: c.components }))
     : [{ title: 'Components', types: Object.keys(config.components) }]
@@ -40,25 +38,8 @@ export function Palette() {
             .map((t) => (
               <PaletteItem key={t} type={t} label={config.components[t].label} />
             ))}
-          {/* placeholder for host-defined custom question types; not wired up yet */}
-          {g.title === 'Questions' && (
-            <button type="button" className="ed-palette-custom" onClick={() => setWip(true)}>
-              + Custom
-            </button>
-          )}
         </div>
       ))}
-      {wip && (
-        <div className="ed-modal-backdrop" onClick={() => setWip(false)}>
-          <div className="ed-modal" role="dialog" aria-label="Custom question" onClick={(e) => e.stopPropagation()}>
-            <div className="ed-modal-title">Custom question</div>
-            <p>Work in progress.</p>
-            <button type="button" className="ed-btn" autoFocus onClick={() => setWip(false)}>
-              OK
-            </button>
-          </div>
-        </div>
-      )}
     </aside>
   )
 }

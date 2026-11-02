@@ -21,7 +21,6 @@ Out: FLN data/DB/APIs, auth, multi-user collaboration, template storage backend,
 - FR7 Components may declare async `resolveData(props, ctx)`; `resolveTemplate(template, config, {seed})` returns a resolved copy; same seed ⇒ same output; resolved data is never saved into the template.
 - FR8 Template `metadata` bag is passed to resolvers.
 - FR9 PDF export via headless Chromium with exact page size, backgrounds, no extra blank pages; blocks may opt out of splitting (`ptb-avoid-break`).
-- FR10 Answer-key rendering mode.
 - FR11 Built-in components: header, heading, text, image/SVG (URL or inline), spacer, divider, columns, box, MCQ, true/false, match the following, arrange in order, fill in the blanks, practice questions.
 - FR13 Components have a width of 1/12 … full of their zone (superseded in detail by FR25), set by dragging side handles (snapping) or from the inspector; narrower components share rows.
 - FR14 Narrower components can be aligned left/centre/right within their row; components can be given a minimum height by dragging a bottom handle.
@@ -36,6 +35,7 @@ Out: FLN data/DB/APIs, auth, multi-user collaboration, template storage backend,
 - FR25 The dragged edge snaps to any twelfth line (1/12 … full) of the zone's grid — the page content area for top-level components — rather than to distances measured from the component.
 - FR23 Dragging a side handle moves that edge while the opposite edge stays fixed (stored as an explicit start column `col`); the width still snaps to the allowed fractions and is limited to the room available.
 - FR24 Table component (Layout): choose rows × columns, edit cells with rich text, resize columns and rows by dragging borders, header row, border style.
+- FR27 Automatic page flow: when a top-level component (or the rest of the page after it) runs past the bottom margin it moves to the top of the next page, creating a page if needed, in the editor and in the exported PDF.
 - FR12 Hosts can add/replace components and categories, and supply custom field renderers.
 
 ## 5. Non-functional requirements
@@ -53,5 +53,5 @@ React 18+, modern Chromium for rendering. Chrome/Chromium must be available to P
 ## 7. Extension requirements
 Per-component resolvers, custom fields, metadata, host-provided component sets, seed-driven randomisation, host-controlled storage (`onChange`, `data`).
 
-## 8. Known gaps (see STEPS.md)
-No overflow warning when a page's content exceeds its height; no outline panel; no upload/asset fields; Latin fonts only; no e2e tests yet.
+## 8. Known gaps
+No pull-back of content when a page has room again; components taller than a page are not split; no outline panel; no upload/asset fields; Latin fonts only; no e2e tests or CI; not yet packaged as a library. The `dev` branch adds JSON import/export, custom components and answer-key PDF export.

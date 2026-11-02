@@ -8,6 +8,8 @@
   line-height: 1.4;
   position: relative;
   overflow: hidden;
+  /* wrap long text (and unbroken strings) at the component edge instead of clipping it */
+  overflow-wrap: anywhere;
   break-after: page;
 }
 .ptb-sheet:last-child { break-after: auto; }
@@ -24,6 +26,9 @@
 
 
 .ptb-text { white-space: pre-wrap; }
+.ptb-rich { overflow-wrap: anywhere; }
+.ptb-cell > *, .ptb-slot > *, .ptb-tf-text, .ptb-mcq-option > *, .ptb-match-item > *, .ptb-seq-card > * { min-width: 0; }
+.ptb-mcq-option, .ptb-match-item { max-width: 100%; }
 .ptb-image { display: flex; }
 .ptb-svg svg, .ptb-inline-svg svg { width: 100%; height: auto; display: block; }
 .ptb-img-placeholder { border: 1px dashed #aaa; color: #888; padding: 10mm 4mm; text-align: center; font-size: 10pt; }

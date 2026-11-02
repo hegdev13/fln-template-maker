@@ -1,8 +1,8 @@
 import express from 'express'
-import { createServer as createVite } from 'vite'
 import { resolve } from 'node:path'
-import { exportPdf } from '../src/pdf/export'
+import { createServer as createVite } from 'vite'
 import { parseTemplate } from '../src/core/schema'
+import { exportPdf } from '../src/pdf/export'
 
 const port = Number(process.env.PORT ?? 5173)
 const app = express()
@@ -15,7 +15,6 @@ app.post('/api/pdf', async (req, res) => {
       baseUrl: `http://localhost:${port}`,
       template,
       seed: req.body.seed,
-      answerKey: !!req.body.answerKey,
     })
     res.type('application/pdf').send(pdf)
   } catch (e) {

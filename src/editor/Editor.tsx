@@ -2,10 +2,8 @@ import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type Dra
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createEditorStore } from '../core/store'
 import { createEmptyTemplate, isZoneInsideNode, parseZoneKey } from '../core/tree'
-import { parseTemplate } from '../core/schema'
 import type { Config, Template } from '../core/types'
 import { Canvas } from './Canvas'
-import { FormatBar } from './FormatBar'
 import { StoreContext, useEditorStore, useEditorStoreApi } from './context'
 import { Inspector } from './Inspector'
 import { Palette } from './Palette'
@@ -22,6 +20,7 @@ export interface EditorProps {
 
 export function Editor({ config, data, onChange, actions }: EditorProps) {
   const store = useMemo(() => createEditorStore(config, data ?? createEmptyTemplate()), []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
   useEffect(() => {
@@ -163,7 +162,6 @@ function Shell({ actions }: { actions: EditorProps['actions'] }) {
     >
       <div className="ed-root">
         <Toolbar actions={actions} />
-        <FormatBar />
         <div className="ed-body">
           <Palette />
           <Canvas />
@@ -185,28 +183,15 @@ function Toolbar({ actions }: { actions: EditorProps['actions'] }) {
   const zoom = useEditorStore((s) => s.zoom)
   const demo = useEditorStore((s) => s.demo)
   const st = api.getState()
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  const exportJson = () => {
-    const t = api.getState().template
-    const url = URL.createObjectURL(new Blob([JSON.stringify(t, null, 2)], { type: 'application/json' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${(t.name || 'template').replace(/\W+/g, '-').toLowerCase()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-  const importJson = async (file: File) => {
-    try {
-      api.getState().setTemplate(parseTemplate(JSON.parse(await file.text())))
-    } catch (err) {
-      alert(`Invalid template file: ${(err as Error).message}`)
-    }
-  }
 
   return (
     <header className="ed-toolbar">
-      <input className="ed-name" value={name} onChange={(e) => st.setName(e.target.value)} aria-label="Template name" />
+      <input
+        className="ed-name"
+        value={name}
+        onChange={(e) => st.setName(e.target.value)}
+        aria-label="Template name"
+      />
       <div className="ed-group">
         <button disabled={!canUndo} onClick={() => st.undo()} title="Undo (⌘Z)">↶</button>
         <button disabled={!canRedo} onClick={() => st.redo()} title="Redo (⇧⌘Z)">↷</button>
@@ -226,18 +211,13 @@ function Toolbar({ actions }: { actions: EditorProps['actions'] }) {
         </button>
       </div>
       <div className="ed-group">
-        <button onClick={() => st.addPage(activePageId)}>+ Page</button>
-        <button onClick={() => st.duplicatePage(activePageId)}>Duplicate</button>
-        <button onClick={() => st.movePage(activePageId, -1)} title="Move page up">↑</button>
-        <button onClick={() => st.movePage(activePageId, 1)} title="Move page down">↓</button>
-        <button disabled={pages.length < 2} onClick={() => st.removePage(activePageId)}>Delete page</button>
+          <button onClick={() => st.addPage(activePageId)}>+ Page</button>
+          <button onClick={() => st.duplicatePage(activePageId)}>Duplicate</button>
+          <button onClick={() => st.movePage(activePageId, -1)} title="Move page up">↑</button>
+          <button onClick={() => st.movePage(activePageId, 1)} title="Move page down">↓</button>
+          <button disabled={pages.length < 2} onClick={() => st.removePage(activePageId)}>Delete page</button>
       </div>
       <div className="ed-spacer" />
-      <div className="ed-group">
-        <button onClick={() => fileRef.current?.click()}>Import JSON</button>
-        <button onClick={exportJson}>Export JSON</button>
-        <input ref={fileRef} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
-      </div>
       {actions?.({ getTemplate: () => api.getState().template })}
     </header>
   )
